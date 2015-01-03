@@ -24,7 +24,7 @@ class Plugin(val global: Global) extends ScalahostPlugin with Example {
       var alreadyRun = false
       override def apply(unit: CompilationUnit) {
         if (!alreadyRun) {
-          example(global.currentRun.units.toList.map(_.body.metadata("scalameta").asInstanceOf[scala.meta.internal.ast.Source]))
+          example(unit, global.currentRun.units.toList.map(_.body.metadata("scalameta").asInstanceOf[scala.meta.internal.ast.Source]))
           alreadyRun = true
         }
       }

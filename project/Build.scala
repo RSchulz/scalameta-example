@@ -14,12 +14,14 @@ object ExampleBuild extends Build {
   ) aggregate (plugin, tests)
 
   lazy val plugin = Project(
-    id   = "example",
+    id   = "eg-sm-plugin",
     base = file("plugin"),
     settings = publishableSettings ++ mergeDependencies ++ Seq(
       libraryDependencies += compiler(languageVersion),
       libraryDependencies += scalameta,
-      libraryDependencies += scalahost
+      libraryDependencies += scalahost,
+      libraryDependencies += kiama2S,
+      libraryDependencies += sgraph
     )
   )
 

@@ -10,4 +10,7 @@ object Dependencies {
 
   lazy val scalameta = "org.scalameta" % "scalameta" % metaVersion cross CrossVersion.binary
   lazy val scalahost = "org.scalameta" % "scalahost" % metaVersion cross CrossVersion.full
+
+  lazy val kiama2S   = "com.googlecode.kiama" %% "kiama" % "2.0.0-SNAPSHOT"
+  lazy val sgraph    = "com.assembla.scala-incubator" %% "graph-core" % "1.9.1"
 }
