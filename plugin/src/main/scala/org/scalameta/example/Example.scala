@@ -103,13 +103,13 @@ trait Example {
         render("self:", self, depth)
         render(s"statements: (${stats.length})", stats, depth)
 
-      case ctp @ Ctor.Primary(mods, paramss) =>
+      case cp @ Ctor.Primary(mods, paramss) =>
         renderOpen("ctorPrimary:", depth)
         render(s"mods:", mods, depth)
         renderParamss(paramss, depth)
         renderClose(depth)
 
-      case ctp @ Ctor.Ref(tipe, argss) =>
+      case cr @ Ctor.Ref(tipe, argss) =>
         render("ctorType:", tipe, depth)
         renders("ctorArgss", argss, depth)
 
@@ -197,7 +197,7 @@ trait Example {
         render("rhs:", rhs, depth + 1)
         renderClose(depth)
 
-      case tT @ Term.Tuple(elements) =>
+      case tt @ Term.Tuple(elements) =>
         renderOpen(s"tuple${elements.length}:", depth)
         render("elements:", elements, depth)
         renderClose(depth)
@@ -308,7 +308,7 @@ trait Example {
     def more(toGo: Int, soFar: List[String]): List[String] =
       toGo match {
         case 0 => s :: soFar
-        case 1 => more(1, "– " :: soFar)
+        case 1 => more(0, "– " :: soFar)
         case _ => more(toGo - 1, "––" :: soFar)
       }
 
