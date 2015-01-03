@@ -1,11 +1,9 @@
 package foo
 package bar
 
-//import java.lang.String
+class C
 
-//class C
-//
-//class D(x: Int) extends C
+class D(x: Int) extends C
 
 case class CC1(i: Int, d: Double, s: String) {
   me =>
@@ -14,7 +12,7 @@ case class CC1(i: Int, d: Double, s: String) {
 
   def echo(a: Any*) = a
 
-  def render: String = f"CC@${System.identityHashCode(me)}%08x: i=$i; d=$d; s='$s'"
+  def render: java.lang.String = f"CC@${System.identityHashCode(me)}%08x: i=$i; d=$d; s='$s'"
 }
 
 
