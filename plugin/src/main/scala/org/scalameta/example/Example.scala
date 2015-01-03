@@ -25,6 +25,7 @@ trait Example {
   }
 
 
+  import TreeEnhancements._
   import Rendering._
 
   def render(t: api.Tree): Unit = render(t, 0)
@@ -58,8 +59,36 @@ trait Example {
         render("type params:", tparams, depth + 1)
         renderClose(depth)
 
+      case ts @ Type.Select(qual, selector) =>
+        renderln("type-select:", depth)
+        render("qual:", qual, depth + 1)
+        render("selector:", selector, depth + 1)
+
       case tar @ Type.Arg.Repeated(tipe) =>
         render("repeatedParam:", tipe, depth)
+
+      case tb @ Type.Bounds(lo, hi) =>
+        if (tb.isBounded) {
+        renderln(s"type-bounds:", depth)
+        lo.map(l => render("lo:", l, depth + 1))
+        hi.map(h => render("hi:", h, depth + 1))
+      }
+
+      case tn @ Type.Name(name) =>
+        renderln(s"name: name='$name'${"; backquted" ? tn.isBackquoted}", depth)
+
+      case tp @ Type.Param(mods, name, tparams, contextBounds, viewBounds, typeBounds) =>
+        if (tp.nonTrivial) {
+          renderOpen(s"type-param${name ? " '%s'"}:", depth)
+          render("mods:", mods, depth + 1)
+          render("tparams:", tparams, depth + 1)
+          render("cboudns:", contextBounds, depth + 1)
+          if (typeBounds.isBounded)
+            render("tbounds:", typeBounds, depth + 1)
+          renderClose(depth)
+        }
+        else
+          renderln(s"type-param${name ? " '%s'"}", depth)
 
       case dd @ Decl.Def(mods, name, tparams, paramss, declType) =>
         renderOpen(s"def-abstract: '$name':", depth)
@@ -67,6 +96,20 @@ trait Example {
         render("tparams:", tparams, depth)
         renderParamss(paramss, depth)
         renderln(s"declType:", depth); render(declType, depth + 1)
+        renderClose(depth)
+
+      case dt @ Decl.Type(mods, name, tparams, bounds) =>
+        renderln(s"decl-type '${name.value}':", depth)
+        render("mods:", mods, depth)
+        render("tparams:", tparams, depth)
+        if (bounds.isBounded)
+          render("bounds:", bounds, depth)
+
+      case dt @ Defn.Type(mods, name, tparams, body) =>
+        renderOpen(s"defn-type '${name.value}:", depth)
+        render("mods:", mods, depth)
+        render("tparams:", tparams, depth)
+        render("body:", body, depth)
         renderClose(depth)
 
       case dt @ Defn.Trait(mods, name, tparams, templ) =>
@@ -145,11 +188,6 @@ trait Example {
         rhs.map(t => render("rhs:", t, depth + 1))
         renderClose(depth)
 
-
-      case tn @ Type.Name(name) =>
-//      renderln(s"name: name='$name'; isBackquoted=${tn.isBackquoted}", depth)
-        renderln(s"name: name='$name'${"; backquted" ? tn.isBackquoted}", depth)
-
       case tp @ Term.Param(mods, name, declType, dfltVal) =>
         renderOpen(s"param '$name':", depth)
         render(s"mods:", mods, depth)
@@ -174,12 +212,10 @@ trait Example {
       case ts @ Term.Select(qual, selector) =>
         renderOpen("select:", depth)
         render("qual:", qual, depth + 1)
-//      renderln(s"selector: '${selector.value}'; isPostfix=${ts.isPostfix}", depth + 1)
         renderln(s"selector: '${selector.value}'${"; postfix" ? ts.isPostfix}", depth + 1)
         renderClose(depth)
 
       case tn @ Term.Name(value) =>
-//      println(s"Term.name('$value'): isBackquoted=${tn.isBackquoted}")
         renderln(s"name: '$value'${" (backquoted)" ? tn.isBackquoted}", depth)
 
       case ti @ Term.Interpolate(prefix, parts, args) =>
@@ -317,6 +353,25 @@ trait Example {
 }
 
 
+object TreeEnhancements {
+  implicit class TypeBounds(val bounds: Type.Bounds) extends AnyVal {
+    def isBounded: Boolean = bounds.lo.isDefined || bounds.hi.isDefined
+  }
+
+  implicit class TypeParam(val tparam: Type.Param) extends AnyVal {
+    def nonTrivial: Boolean = {
+      val Type.Param(mods, _, tparams, contextBounds, viewBounds, typeBounds) = tparam
+
+      mods.nonEmpty ||
+      tparams.nonEmpty ||
+      contextBounds.nonEmpty ||
+      viewBounds.nonEmpty ||
+      typeBounds.isBounded
+    }
+  }
+}
+
+
 object Rendering {
   implicit class StringIf(s: String) {
     def ? (cond: Boolean): String =
@@ -337,7 +392,7 @@ object Rendering {
     override def toString = s.getOrElse("")
   }
 
-  implicit def SOForOptTermName(on: Option[Term.Name]): StringOpt =
+  implicit def SOForOptName(on: Option[Name]): StringOpt =
     on match {
       case Some(tn) => new StringOpt(tn.value)
       case None     => new StringOpt("")

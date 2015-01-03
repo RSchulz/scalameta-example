@@ -65,6 +65,10 @@ class C1(a1: Any, a2: Any) {
 
 trait T {
   def t: String
+
+  type TT
+
+  type TB <: AnyRef
 }
 
 trait   T1
@@ -93,7 +97,16 @@ extends T3
 with    T2
 with    T1
 {
+  type TT = Double
+
+  type TB = String
+
   def identify: String = s"id=$t; count=$count"
+}
+
+
+class CP[P >: Null](p: P) {
+  def two: Seq[P] = p :: p :: Nil
 }
 
 
@@ -112,4 +125,6 @@ object Simple {
   var i = 100
 
   while (i > 0) i -= 1
+
+  type T = Any
 }
