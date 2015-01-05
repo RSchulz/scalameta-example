@@ -36,7 +36,7 @@ trait Example {
         if (p.hasBraces)
           renderOpen(s"pkg: ref=$ref; hasBraces=${p.hasBraces}; statements (${stats.length}):", depth)
         else
-          renderln(s"pkg: ref=$ref; hasBraces=${p.hasBraces}; statements (${stats.length}7):", depth)
+          renderln(s"pkg: ref=$ref; hasBraces=${p.hasBraces}; statements (${stats.length}):", depth)
         render(stats, depth + 1)
         if (p.hasBraces)
           renderClose(depth)
@@ -44,14 +44,22 @@ trait Example {
       case i @ Import(clauses) =>
         render("import:", clauses, depth)
 
+      case ic @ Import.Clause(Term.Name(name), sels) =>
+        renderln(s"import '$name':", depth)
+        render("selector:", sels, depth + 1)
+
       case ic @ Import.Clause(ref, sels) =>
-        render("impClause:", sels, depth)
+        renderln(s"import ref='$ref' (${ref.getClass.getName}}):", depth)
+        render("selector:", sels, depth + 1)
 
       case in @ Import.Name(name: String) =>
         renderln(s"impName: '$name'", depth)
 
       case ir @ Import.Rename(from: String, to: String) =>
         renderln(s"impRename: from='$from'; to='$to'", depth)
+
+      case iw @ Import.Wildcard() =>
+        renderln("import-wildcard", depth)
 
       case ta @ Type.Apply(tipe, tparams) =>
         renderOpen("type application:", depth)
@@ -69,13 +77,13 @@ trait Example {
 
       case tb @ Type.Bounds(lo, hi) =>
         if (tb.isBounded) {
-        renderln(s"type-bounds:", depth)
-        lo.map(l => render("lo:", l, depth + 1))
-        hi.map(h => render("hi:", h, depth + 1))
+          renderln(s"type-bounds:", depth)
+          lo.map(l => render("lo:", l, depth + 1))
+          hi.map(h => render("hi:", h, depth + 1))
       }
 
       case tn @ Type.Name(name) =>
-        renderln(s"name: name='$name'${"; backquted" ? tn.isBackquoted}", depth)
+        renderln(s"name '$name'${"; backquted" ? tn.isBackquoted}:", depth)
 
       case tp @ Type.Param(mods, name, tparams, contextBounds, viewBounds, typeBounds) =>
         if (tp.nonTrivial) {
@@ -90,13 +98,24 @@ trait Example {
         else
           renderln(s"type-param${name ? " '%s'"}", depth)
 
+      case tc @ Type.Compound(types, refinements) =>
+        renderln("type-compound:", depth)
+        render("base types:", types, depth + 1)
+        render("refinements:", refinements, depth + 1)
+
       case dd @ Decl.Def(mods, name, tparams, paramss, declType) =>
-        renderOpen(s"def-abstract: '$name':", depth)
-        render("mods:", mods, depth)
-        render("tparams:", tparams, depth)
-        renderParamss(paramss, depth)
-        renderln(s"declType:", depth); render(declType, depth + 1)
-        renderClose(depth)
+        if (dd.nonTrivial) {
+          renderOpen(s"def-abstract '$name':", depth)
+          render("mods:", mods, depth)
+          render("tparams:", tparams, depth)
+          renderParamss(paramss, depth)
+          renderln(s"declType:", depth); render(declType, depth + 2)
+          renderClose(depth)
+        }
+        else {
+          renderln(s"def-abstract '$name'", depth)
+          renderln(s"declType:", depth + 1); render(declType, depth + 2)
+        }
 
       case dt @ Decl.Type(mods, name, tparams, bounds) =>
         renderln(s"decl-type '${name.value}':", depth)
@@ -164,19 +183,19 @@ trait Example {
         renderClose(depth)
 
       case dd @ Defn.Def(mods, name, tparams, paramss, declType, body) =>
-        renderOpen(s"def-implemented: '$name'", depth)
-        render("mods:", mods, depth)
-        render("tparams:", tparams, depth)
-        renderParamss(paramss, depth)
-        declType map { t => renderln(s"declType:", depth); render(t, depth + 1) }
-        render("body:", body, depth)
+        renderOpen(s"def-implemented: '${name.value}'", depth)
+        render("mods:", mods, depth + 1)
+        render("tparams:", tparams, depth + 1)
+        renderParamss(paramss, depth + 1)
+        declType map { t => renderln(s"declType:", depth); render(t, depth + 2) }
+        render("body:", body, depth + 1)
         renderClose(depth)
 
       case dv @ Defn.Val(mods, pats, declType, rhs) =>
         renderOpen("val:", depth)
-        render("mods:", mods, depth)
-        render("pats:", pats, depth)
-        declType map { t => renderln(s"declType:", depth); render(t, depth + 1) }
+        render("mods:", mods, depth + 1)
+        render("pats:", pats, depth + 1)
+        declType map { t => renderln(s"declType:", depth); render(t, depth + 2) }
         render("rhs:", rhs, depth + 1)
         renderClose(depth)
 
@@ -184,15 +203,15 @@ trait Example {
         renderOpen("var:", depth)
         render("mods:", mods, depth)
         render("pats:", pats, depth)
-        declType map { t => renderln(s"declType:", depth); render(t, depth + 1) }
-        rhs.map(t => render("rhs:", t, depth + 1))
+        declType map { t => renderln(s"declType:", depth); render(t, depth + 2) }
+        rhs.map(t => render("rhs:", t, depth))
         renderClose(depth)
 
       case tp @ Term.Param(mods, name, declType, dfltVal) =>
         renderOpen(s"param '$name':", depth)
         render(s"mods:", mods, depth)
-        declType map { t => renderln(s"declType:", depth); render(t, depth + 1) }
-        dfltVal  map { v => renderln(s"dfltVal:", depth);  render(v, depth + 1) }
+        declType map { t => renderln(s"declType:", depth); render(t, depth + 2) }
+        dfltVal  map { v => renderln(s"dfltVal:", depth);  render(v, depth + 2) }
         renderClose(depth)
 
       case tn @ Term.New(templ) =>
@@ -367,6 +386,16 @@ object TreeEnhancements {
       contextBounds.nonEmpty ||
       viewBounds.nonEmpty ||
       typeBounds.isBounded
+    }
+  }
+
+  implicit class DeclDef(val declDef: Decl.Def) extends AnyVal {
+    def nonTrivial: Boolean = {
+      val Decl.Def(mods, name, tparams, paramss, declType) = declDef
+
+      mods.nonEmpty ||
+      tparams.nonEmpty ||
+      paramss.nonEmpty
     }
   }
 }
