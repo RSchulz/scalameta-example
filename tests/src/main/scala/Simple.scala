@@ -1,5 +1,8 @@
 package foo
-package bar {
+package bar
+{
+  import scala.annotation.tailrec
+
   import Simple._
   import _root_.foo.bar.Simple._
 
@@ -11,6 +14,12 @@ package bar {
     me =>
 
     def compute = s.length + i + d
+
+    def computeMore = {
+      val c = compute
+      val cc = c * c
+      cc + c
+    }
 
     def echo(a: Any*) = a
 
@@ -72,6 +81,8 @@ package bar {
 
     def y: Num with Str
 
+    var q: Int
+
     type TT
 
     type TB <: AnyRef
@@ -121,12 +132,32 @@ package bar {
 
     def y = SN("bar", 42.0)
 
+    var q = 22
+
     def identify: String = s"id=$t; count=$count"
+
+    def mut(i: Int): Double = {
+      q += i
+      q
+    }
   }
 
 
   class CP[P >: Null](p: P) {
+//  @tailrec
     def two: Seq[P] = p :: p :: Nil
+
+    private[foo] var fV: Int = _
+
+    def v = fV
+
+    def v_=(newV: Int): Unit =
+      fV = newV
+
+    def mutV(newV: Int): Int = {
+      v = newV
+      v
+    }
   }
 
 

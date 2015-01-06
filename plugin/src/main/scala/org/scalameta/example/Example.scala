@@ -17,10 +17,11 @@ trait Example {
   def example(unit: CompilationUnits#CompilationUnit, sources: List[Source]): Unit = {
     println()
     sources foreach { src =>
-      println(s"Compilation Unit for '${unit.source.path}':")
+      println(s"Compilation Unit for '${unit.source.path}' {")
 //    println(s"src=$src")
-      src.stats foreach render
+      src.stats foreach (render(_, 1))
     }
+    println("}")
     println()
   }
 
@@ -49,7 +50,8 @@ trait Example {
         render("selector:", sels, depth + 1)
 
       case ic @ Import.Clause(ref, sels) =>
-        renderln(s"import ref='$ref' (${ref.getClass.getName}}):", depth)
+        renderln(s"import:", depth)
+        render("ref:", ref, depth + 1)
         render("selector:", sels, depth + 1)
 
       case in @ Import.Name(name: String) =>
@@ -117,18 +119,23 @@ trait Example {
           renderln(s"declType:", depth + 1); render(declType, depth + 2)
         }
 
+      case dv @ Decl.Var(mod, pats, declType) =>
+        renderln(s"decl-var:", depth)
+        render("pats:", pats, depth + 1)
+        render("declType:", declType, depth + 1)
+
       case dt @ Decl.Type(mods, name, tparams, bounds) =>
         renderln(s"decl-type '${name.value}':", depth)
-        render("mods:", mods, depth)
-        render("tparams:", tparams, depth)
+        render("mods:", mods, depth + 1)
+        render("tparams:", tparams, depth + 1)
         if (bounds.isBounded)
-          render("bounds:", bounds, depth)
+          render("bounds:", bounds, depth + 1)
 
       case dt @ Defn.Type(mods, name, tparams, body) =>
         renderOpen(s"defn-type '${name.value}:", depth)
-        render("mods:", mods, depth)
-        render("tparams:", tparams, depth)
-        render("body:", body, depth)
+        render("mods:", mods, depth + 1)
+        render("tparams:", tparams, depth + 1)
+        renderClose(depth + 1)
         renderClose(depth)
 
       case dt @ Defn.Trait(mods, name, tparams, templ) =>
@@ -139,12 +146,16 @@ trait Example {
         renderClose(depth)
 
       case dc @ Defn.Class(mods, name, tparams, ctor, templ) =>
-        renderOpen(s"class '$name':", depth)
-        render("mods:", mods, depth)
-        render("tparams:", tparams, depth)
-        render("ctor:", ctor, depth)
-        render("templ:", templ, depth + 1)
-        renderClose(depth)
+        if (dc.nonTrivial) {
+          renderOpen(s"class '$name':", depth)
+          render("mods:", mods, depth + 1)
+          render("tparams:", tparams, depth + 1)
+          render("ctor:", ctor, depth + 1)
+          render("templ:", templ, depth + 1)
+          renderClose(depth)
+        }
+        else
+          renderln(s"class '$name'", depth)
 
       case dO @ Defn.Object(mods, name, templ) =>
         renderOpen(s"object: '${name.value}", depth)
@@ -156,28 +167,46 @@ trait Example {
 //    case mc @ Mod.Case() =>
 //      renderln(s"mod: case", depth)
 
+      case ma @ Mod.Annot(ref) =>
+        renderln("annotation:", depth)
+        render("ctor-ref:", ref, depth + 1)
+
+      case pw @ Mod.PrivateWithin(name) =>
+        renderln(s"private-within: name='$name'", depth)
+
+      case pw @ Mod.ProtectedWithin(name) =>
+        renderln(s"protected-within: name='$name'", depth)
+
       case mc: Mod =>
         renderln(s"mod: ${mc.productPrefix}", depth)
 
       case t @ Templ(early, parents, self, stats) =>
-        render("templEarly:", early, depth)
-        render("parents:", parents, depth)
-        render("self:", self, depth)
-        render(s"statements: (${stats.length})", stats, depth)
+        if (t.nonTrivial) {
+//        renderln("templ:", depth)
+          render("early:", early, depth)
+          render("parents:", parents, depth)
+          if (self.nonTrivial)
+            render("self:", self, depth)
+          render(s"statements: (${stats.length})", stats, depth)
+        }
+        else
+          renderln("vacuous", depth)
 
       case cp @ Ctor.Primary(mods, paramss) =>
-        renderOpen("ctorPrimary:", depth)
-        render(s"mods:", mods, depth)
-        renderParamss(paramss, depth)
-        renderClose(depth)
+        if (cp.nonTrivial) {
+          renderOpen("ctorPrimary:", depth)
+          render(s"mods:", mods, depth + 1)
+          renderParamss(paramss, depth + 1)
+          renderClose(depth)
+        }
 
       case cr @ Ctor.Ref(tipe, argss) =>
-        render("ctorType:", tipe, depth)
-        renders("ctorArgss", argss, depth)
+        render("type:", tipe, depth)
+        renders("argss", argss, depth)
 
       case tpv @ Templ.Param.Val(mods, name, declType, dflt) =>
-        renderOpen(s"templParamVal${name ? " ('%s')"}:", depth)
-        render("mods:", mods, depth)
+        renderOpen(s"templParamVal${name ? " '%s'"}:", depth)
+        render("mods:", mods, depth + 1)
         declType map (t => render("declType:", t, depth + 1))
         dflt map (t => render("dflt:", t, depth + 1))
         renderClose(depth)
@@ -187,7 +216,7 @@ trait Example {
         render("mods:", mods, depth + 1)
         render("tparams:", tparams, depth + 1)
         renderParamss(paramss, depth + 1)
-        declType map { t => renderln(s"declType:", depth); render(t, depth + 2) }
+        declType map { t => renderln(s"declType:", depth + 1); render(t, depth + 2) }
         render("body:", body, depth + 1)
         renderClose(depth)
 
@@ -195,23 +224,27 @@ trait Example {
         renderOpen("val:", depth)
         render("mods:", mods, depth + 1)
         render("pats:", pats, depth + 1)
-        declType map { t => renderln(s"declType:", depth); render(t, depth + 2) }
+        declType map { t => renderln(s"declType:", depth + 1); render(t, depth + 2) }
         render("rhs:", rhs, depth + 1)
         renderClose(depth)
 
-      case tv @ Defn.Var(mods, pats, declType, rhs) =>
-        renderOpen("var:", depth)
-        render("mods:", mods, depth)
-        render("pats:", pats, depth)
-        declType map { t => renderln(s"declType:", depth); render(t, depth + 2) }
-        rhs.map(t => render("rhs:", t, depth))
-        renderClose(depth)
+      case dv @ Defn.Var(mods, pats, declType, rhs) =>
+        if (dv.nonTrivial) {
+          renderOpen("var:", depth)
+          render("mods:", mods, depth + 1)
+          render("pats:", pats, depth + 1)
+          declType map { t => renderln(s"declType:", depth + 1); render(t, depth + 2) }
+          rhs.map(t => render("rhs:", t, depth + 1))
+          renderClose(depth)
+        }
+        else
+          renderln("var ???", depth)
 
       case tp @ Term.Param(mods, name, declType, dfltVal) =>
-        renderOpen(s"param '$name':", depth)
+        renderOpen(s"param${name ? " '%s'"}:", depth)
         render(s"mods:", mods, depth)
-        declType map { t => renderln(s"declType:", depth); render(t, depth + 2) }
-        dfltVal  map { v => renderln(s"dfltVal:", depth);  render(v, depth + 2) }
+        declType map { t => renderln(s"declType:", depth + 1); render(t, depth + 2) }
+        dfltVal  map { v => renderln(s"dfltVal:", depth + 1);  render(v, depth + 2) }
         renderClose(depth)
 
       case tn @ Term.New(templ) =>
@@ -254,7 +287,7 @@ trait Example {
 
       case tt @ Term.Tuple(elements) =>
         renderOpen(s"tuple${elements.length}:", depth)
-        render("elements:", elements, depth)
+        render("elements:", elements, depth + 1)
         renderClose(depth)
 
       case pw @ Pat.Wildcard() =>
@@ -263,7 +296,7 @@ trait Example {
 
       case tb @ Term.Block(stats) =>
         renderOpen(s"block:", depth)
-        render("statements (${stats.length}):", stats, depth)
+        render(s"statements (${stats.length}):", stats, depth + 1)
         renderClose(depth)
 
       case tm @ Term.Match(scrutinee, cases) =>
@@ -277,6 +310,11 @@ trait Example {
         render("enums:", enums, depth)
         render("body:", body, depth)
         renderClose(depth)
+
+      case ta @ Term.Assign(lhs, rhs) =>
+        renderln("assign:", depth)
+        render("lhs:", lhs, depth)
+        render("rhs:", rhs, depth)
 
       case eg @ Enum.Generator(pat, rhs) =>
         renderOpen("for generator:", depth)
@@ -298,7 +336,7 @@ trait Example {
         renderClose(depth)
 
       case lit: Lit =>
-        renderln(s"literal: $lit", depth)
+        renderln(s"literal: $lit (${lit.getClass.getSimpleName})", depth)
 
       case _ =>
         renderln(s"Other Tree (${t.getClass.getName}): «$t»", depth)
@@ -398,6 +436,56 @@ object TreeEnhancements {
       paramss.nonEmpty
     }
   }
+
+  implicit class CtorPrimary(val ctor: Ctor.Primary) extends AnyVal {
+    def nonTrivial: Boolean =
+      ctor.mods.nonEmpty ||
+      ctor.paramss.nonEmpty
+  }
+
+  implicit class TemplE(val templ: Templ) extends AnyVal {
+    def nonTrivial: Boolean = {
+      val Templ(early, parents, _, stats) = templ
+
+      early.nonEmpty ||
+      parents.nonEmpty ||
+      stats.nonEmpty
+    }
+  }
+
+  implicit class DefnClass(val defnClass: Defn.Class) extends AnyVal {
+    def nonTrivial: Boolean = {
+      val Defn.Class(mods, name, tparams, ctor, templ) = defnClass
+
+      mods.nonEmpty ||
+      tparams.nonEmpty ||
+      tparams.nonEmpty ||
+      ctor.nonTrivial ||
+      templ.nonTrivial
+    }
+  }
+
+  implicit class DefnVar(val defnVar: Defn.Var) extends AnyVal {
+    def nonTrivial: Boolean = {
+      val Defn.Var(mods, pats, declType, rhs) = defnVar
+
+      mods.nonEmpty ||
+      pats.nonEmpty ||
+      declType.nonEmpty ||
+      rhs.nonEmpty
+      }
+    }
+
+  implicit class TermParam(val termParam: Term.Param) extends AnyVal {
+    def nonTrivial: Boolean = {
+      val Term.Param(mods, name, declType, default) = termParam
+
+      mods.nonEmpty ||
+      name.nonEmpty ||
+      declType.nonEmpty ||
+      default.nonEmpty
+    }
+  }
 }
 
 
@@ -412,8 +500,8 @@ object Rendering {
     override def toString = s
   }
 
-  implicit class StringOpt(s: Option[String]) {
-    def this(s: String) = this(Some(s))
+  implicit class StringOpt(val s: Option[String]) extends AnyVal {
+//  def this(s: String) = this(Some(s))
 
     def ? (fmt: String): String =
       s.map(s => fmt.format(s)).getOrElse("")
@@ -423,7 +511,7 @@ object Rendering {
 
   implicit def SOForOptName(on: Option[Name]): StringOpt =
     on match {
-      case Some(tn) => new StringOpt(tn.value)
-      case None     => new StringOpt("")
+      case Some(tn) => new StringOpt(Some(tn.value))
+      case None     => new StringOpt(None)
     }
 }
